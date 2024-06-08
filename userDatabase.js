@@ -1,7 +1,9 @@
 // userDatabase.js
-const username = "admin";
-const password = "password";
-
+const username = process.env.integrationhublogsusername;
+const password = process.env.integrationhublogpassword;
+console.log(process.env);
+console.log(username);
+console.log(password);
 module.exports = {
   findByUsername: function (usernameToCheck) {
     if (usernameToCheck === username) {

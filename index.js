@@ -1,3 +1,6 @@
+require("dotenv").config({
+  path: "config.env",
+});
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
@@ -12,6 +15,9 @@ app.use(
     secret: "integration_zrpl_embrace_changes",
     resave: false,
     saveUninitialized: false,
+    cookie: {
+      maxAge: 900000, // 1 minute
+    },
   })
 );
 
@@ -26,6 +32,17 @@ function requireLogin(req, res, next) {
   next();
 }
 
+// Middleware to check session expiration
+app.use((req, res, next) => {
+  // Check if the session has expired
+  if (req.session.cookie && req.session.cookie.expires <= Date.now()) {
+    // Session has expired, redirect to login page
+    return res.status(401).send("Session expired");
+  }
+  next();
+});
+
+// Serve the main page
 app.get("/", requireLogin, (req, res) => {
   fs.readdir(LOG_FOLDER, (err, files) => {
     if (err) {
@@ -37,26 +54,37 @@ app.get("/", requireLogin, (req, res) => {
       })
       .join("");
     res.send(`
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Integration Hub Log Files</title>
-              <link rel="stylesheet" href="/styles.css">
-          </head>
-          <body>
-              <div class="container">
-                  <h1>Integration Hub Log Files</h1>
-                  <div class="file-list">
-                      <ul>
-                          ${fileLinks}
-                      </ul>
-                  </div>
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Integration Hub Log Files</title>
+          <link rel="stylesheet" href="/styles.css">
+          <script>
+              function redirectToLogin() {
+                  window.location.href = "/login"; // Redirect to the login page
+              }
+
+              function startSessionTimeout() {
+                  setTimeout(redirectToLogin, 900000); // Redirect after 15 minute (900000 milliseconds)
+              }
+
+              window.onload = startSessionTimeout;
+          </script>
+      </head>
+      <body>
+          <div class="container">
+              <h1>Integration Hub Log Files</h1>
+              <div class="file-list">
+                  <ul>
+                      ${fileLinks}
+                  </ul>
               </div>
-          </body>
-          </html>
-      `);
+          </div>
+      </body>
+      </html>
+    `);
   });
 });
 
